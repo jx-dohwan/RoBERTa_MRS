@@ -8,7 +8,7 @@ import os
 def SaveModel(model, path):
     if not os.path.exists(path):
         os.makedirs(path)
-    torch.save(model.state_dict(), os.path.join(path, 'post_model.bin'))
+    torch.save(model.state_dict(), os.path.join(path, '/content/drive/MyDrive/인공지능/멀티턴응답선택/post_model.bin'))
 
 def CELoss(pred_outs, labels):
     """
@@ -29,7 +29,7 @@ post_dataloader = DataLoader(post_dataset, batch_size=2, shuffle=False, num_work
 from model import PostModel
 post_model = PostModel().cuda()
 
-training_epochs = 1 # colab에서 돌아가게끔 하기 위해 1을 사용, 실습자는 5로 해서 사용하면 됨
+training_epochs = 5 # colab에서 돌아가게끔 하기 위해 1을 사용, 실습자는 5로 해서 사용하면 됨
 max_grad_norm = 10
 lr = 1e-5
 num_training_steps = len(post_dataset)*training_epochs
