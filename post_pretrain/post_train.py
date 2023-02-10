@@ -51,7 +51,7 @@ for epoch in range(training_epochs):
         
         """Prediction"""
         corrupt_mask_outputs, urc_cls_outputs = post_model(batch_corrupt_tokens, batch_corrupt_mask_positions, batch_urc_inputs, batch_mlm_attentions, batch_urc_attentions)
-        pdb.set_trace()        
+        #pdb.set_trace()        
 
         """Loss calculation & training"""
         original_token_indexs = []
