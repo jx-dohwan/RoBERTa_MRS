@@ -1,7 +1,7 @@
 
 ## 💡프로젝트 소개
 
-#### 1️⃣ 주제 : 대화속 감정인식<br>
+#### 1️⃣ 주제 : 멀티턴 응답선택<br>
 #### 2️⃣ 설명 : [CoMPM 논문](https://arxiv.org/pdf/2108.11626v3.pdf)을 기반으로 ERC 모델을 구현<br> 
 #### 3️⃣ 모델 : Hugging Face [roberta-base](https://huggingface.co/roberta-base) 모델 사용하여 진행<br><br>
 
