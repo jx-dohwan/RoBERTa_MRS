@@ -1,50 +1,82 @@
 
 ## 💡프로젝트 소개
 
-##### 1️⃣ 주제 : 멀티턴 응답선택<br>
-##### 2️⃣ 설명 : [ Fine-grained Post-training for Improving Retrieval-based Dialogue Systems](https://aclanthology.org/2021.naacl-main.122.pdf)논문을 기반으로 MRS 모델을 구현<br> 
-##### 3️⃣ 모델 : Hugging Face [roberta-base](https://huggingface.co/roberta-base) 모델 사용하여 진행<br><br>
+#### 1️⃣ 주제 : 멀티턴 응답선택<br>
+#### 2️⃣ 설명 : [ Fine-grained Post-training for Improving Retrieval-based Dialogue Systems](https://aclanthology.org/2021.naacl-main.122.pdf)을 기반으로 MRS 모델을 구현<br> 
+#### 3️⃣ 모델 : Hugging Face [roberta-base](https://huggingface.co/roberta-base) 모델 사용하여 진행<br><br>
 
 ## 논문 소개
-#### CoM(context module) : 입력으로는 대화의 발화들이 전부 들어간다.
-#### PM(pre-trained memory module) : CSK와 같이 context-independent발화의 feature을 담아내기 위함이다. <br><br>
-
-![](img/ComPM.png)
+- pre-training 모델을 post-training를 통해서 도메인 적응을 하고 fine-tuning를 진행해 성능 향상을 기대한다.
+- fine-grained : 소량의 후보에서 최적의 후보를 선택하는 방법으로 주로 One-tower 구조의 모델을 구현하여 성능을 향상시킨다.
+![](img/mrs.png)
 <Br><br>
 ### 부연설명
-- 각 발화의 feature는 CLS vector로 추출한다. 
-- 이 vector를 GRU를 이용하여 하나의 vector로 만든다.
-- Attention-based 결합은 성능이 떨어진다.
-- speaker tracking만 한다.
-- Listener tracking는 큰 효과가 없다.
-- CoM과 PM의 feature vector의 dimension이 다르면 Wp을 이용하여 맞춰준다.
+- post-training
+  - 전체 대화를 여러 개의 short context-response pairs로 나누어 모델을 학습
+    - candidate을 positive, random negative, context negative로 3개 class로 구성해서 학습
+    - 이를 통해 발화 관련 분류(URC)로 발화간의 관계 및 발화 내적 관계를 배워 데이터 증강과 성능 향상의 효과를 얻는다. 
+  - MLM 사용
 
 ---
-## 1. Train 
+## 1. post-training & fine-tuning
 
 ```
 !pip install transformers==4.25.1
-!pip install sklearn
 
-!python3 train.py
+
+!python3 post_pretrain/train.py
+!python3 fine_tuning/train.py
 ```
 
 ## 2. Test
 ```
 import torch
-from dataset import data_loader
-from torch.utils.data import DataLoader
+from model import FineModel
+fine_model = FineModel().cuda()
+fine_model.load_state_dict(torch.load('/content/drive/MyDrive/인공지능/멀티턴응답선택/fine_model.bin'))
 
-test_dataset = data_loader('./data/test_sent_emo.csv')
-test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=4, collate_fn=test_dataset.collate_fn)
 
-from model import ERC_model
-clsNum = len(test_dataset.emoList)
-erc_model = ERC_model(clsNum).cuda()
-model_path = './model.bin'
-erc_model.load_state_dict(torch.load(model_path))
-erc_model.eval()
-print('')
+context = ["어떤 문제가 있으신가요?", "어떤 차를 사야 할지 잘 모르겠어요.", "차는 한 번 사면 10년도 넘게 써서, 신중하게 골라야 해요."]
+candidates = ["저 좀 도와주실 수 있나요?", "저는 농구를 좋아합니다.", "자동차는 신중히 골라야합니다.", "저는 차 마시는거를 좋아합니다.", "날씨가 화창합니다.", "저는 차를 좋아합니다."]
+     
+
+context_token = [fine_model.tokenizer.cls_token_id]
+for utt in context:
+    context_token += fine_model.tokenizer.encode(utt, add_special_tokens=False)
+    context_token += [fine_model.tokenizer.sep_token_id]
+
+session_tokens = []    
+for response in candidates:
+    response_token = [fine_model.tokenizer.eos_token_id]
+    response_token += fine_model.tokenizer.encode(response, add_special_tokens=False)
+    candidate_tokens = context_token + response_token        
+    session_tokens.append(candidate_tokens)
+    
+# 최대 길이 찾기 for padding
+max_input_len = 0
+input_tokens_len = [len(x) for x in session_tokens]
+max_input_len = max(max_input_len, max(input_tokens_len))    
+    
+batch_input_tokens = []
+batch_input_attentions = []
+for session_token in session_tokens:
+    input_token = session_token + [fine_model.tokenizer.pad_token_id for _ in range(max_input_len-len(session_token))]
+    input_attention = [1 for _ in range(len(session_token))] + [0 for _ in range(max_input_len-len(session_token))]
+    batch_input_tokens.append(input_token)
+    batch_input_attentions.append(input_attention)
+    
+batch_input_tokens = torch.tensor(batch_input_tokens).cuda()
+batch_input_attentions = torch.tensor(batch_input_attentions).cuda()
+
+
+softmax = torch.nn.Softmax(dim=1)
+results = fine_model(batch_input_tokens, batch_input_attentions)
+prob = softmax(results)
+true_prob = prob[:,1].tolist()
+
+print(context)
+for utt, prob in zip(candidates, true_prob):
+    print(utt, '##', round(prob,3))
 ```
 
 ---
@@ -52,12 +84,13 @@ print('')
 
 |개선 서비스|진행사항(%)|
 |:----------:|:------:|
-|speaker 구분||
-|CLS 토큰 위치변경 ||
-|special token으로 예측할 발화 추가||
-|도메인 적응||
-|감정간의 상관관계 고려||
-|논문 참고하여 모델 개선||
+|데이터셋 추가 확보||
+|키워드에 따라 bias되는 문제 연구||
+|다화자의 경우 고려||
+|발화의 추가 특징 고려||
+|context 길이 선정||
+|같은 세션을 판단할 모듈있는지 고려||
+|teacher 모델의 예측 값을 활용하여 학습|
 
 
 ---
