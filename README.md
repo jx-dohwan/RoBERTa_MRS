@@ -1,9 +1,9 @@
 
 ## 💡프로젝트 소개
 
-#### 1️⃣ 주제 : 멀티턴 응답선택<br>
-#### 2️⃣ 설명 : [ Fine-grained Post-training for Improving Retrieval-based Dialogue Systems](https://aclanthology.org/2021.naacl-main.122.pdf)논문을 기반으로 MRS 모델을 구현<br> 
-#### 3️⃣ 모델 : Hugging Face [roberta-base](https://huggingface.co/roberta-base) 모델 사용하여 진행<br><br>
+##### 1️⃣ 주제 : 멀티턴 응답선택<br>
+##### 2️⃣ 설명 : [ Fine-grained Post-training for Improving Retrieval-based Dialogue Systems](https://aclanthology.org/2021.naacl-main.122.pdf)논문을 기반으로 MRS 모델을 구현<br> 
+##### 3️⃣ 모델 : Hugging Face [roberta-base](https://huggingface.co/roberta-base) 모델 사용하여 진행<br><br>
 
 ## 논문 소개
 #### CoM(context module) : 입력으로는 대화의 발화들이 전부 들어간다.
